@@ -13,7 +13,22 @@ export type StationDTO = {
     isActive: boolean;
 };
 
-//Station Service DTO Function To Avoid Leaks of DB Schame Changes
+export type StationsParams = {
+    state?: string;
+    district?: string;
+    page: number;
+    limit: number;
+};
+
+export type ListStaitonsResult = {
+    stations: StationDTO[];
+    page: number;
+    limit: number;
+};
+
+
+
+//Station Service DTO Function To Avoid Leaks of DB Schema Changes
 function mapStationDTO(r: StationRow): StationDTO {
     return {
 
@@ -31,9 +46,24 @@ function mapStationDTO(r: StationRow): StationDTO {
 }
 
 //Calls listStations in Repo and calls map to Service Station DTO 
-export async function getActiveStations(): Promise <StationDTO[]> {
+export async function getActiveStations(params: StationsParams): Promise <ListStaitonsResult> {
 
-    const rows = await listStations();
-    return rows.map(mapStationDTO);
+    const page = params.page;
+    const limit = params.limit;
+
+    const offset = (page -1) * limit;
+
+    const rows = await listStations({
+        state: params.state,
+        district: params.district,
+        limit, 
+        offset,
+    });
+
+    return {
+        stations: rows.map(mapStationDTO),
+        page,
+        limit,
+    };
 
 }

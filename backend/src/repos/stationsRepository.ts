@@ -13,9 +13,37 @@ export type StationRow = {
     is_active: boolean;
 };
 
-export async function listStations(): Promise<StationRow[]> {
+export type ParamsListStations = {
+    state?: string;
+    district?: string;
+    limit: number;
+    offset: number;
+}
 
-    const result = await pool.query<StationRow>(
+
+
+
+export async function listStations(params: ParamsListStations): Promise<StationRow[]> {
+
+    const where: string [] = ["is_active = TRUE"];
+    const values: any[] = [];
+    let index = 1;
+
+    if (params.state) {
+        where.push(`state = $${index++}`);
+        values.push(params.state);
+    }
+
+    if (params.district) {
+        where.push(`district = $${index++}`);
+    }
+
+    values.push(params.limit);
+    const limitIndex = index++;
+    values.push(params.offset)
+    const offsetIndex = index++;
+
+    const sqlQuery = (
         `SELECT 
             station_id,
             name,
@@ -27,10 +55,14 @@ export async function listStations(): Promise<StationRow[]> {
             source,
             is_active
         FROM stations
-        WHERE is_active = TRUE
-        ORDER BY state, district, name;
+        WHERE ${where.join(" AND ")}
+        ORDER BY state, district, name
+        LIMIT $${limitIndex}
+        OFFSET $${offsetIndex};
         `
     );
+
+    const result = await pool.query<StationRow> (sqlQuery, values);
 
     return result.rows;
 

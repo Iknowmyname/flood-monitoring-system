@@ -1,28 +1,22 @@
 import express from "express";
 import pool from "./db.js";
 import stationRoutes from "./routes/stationsRoutes.js";
-import healthCheckRoute from "./routes/healthCheckRoute.js"
+import ingestRoutes from "./routes/ingestRoutes.js";
+import pibRoutes from "./routes/pibRoutes.js";
+import jobRoutes from "./routes/jobRoutes.js";
 
 const app = express();
 
 app.use(express.json());
 
-
-//Health Endpoint Test
-// app.get("/health", (req,res) => {
-
-//     res.status(200).json({
-//         status: "ok",
-//         service: "flood-backend",
-//         timestamp: new Date().toISOString()
-//     });
-// });
-
 //Stations DB Connection Test
 app.use("/api/stations", stationRoutes);
 
-app.use("/api/health", healthCheckRoute)
+app.use("/api/ingest", ingestRoutes);
 
+app.use("/api/pib", pibRoutes);
+
+app.use("/api/jobs", jobRoutes);
 
 const PORT = 3000;
 
