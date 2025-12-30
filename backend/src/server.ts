@@ -4,6 +4,7 @@ import stationRoutes from "./routes/stationsRoutes.js";
 import ingestRoutes from "./routes/ingestRoutes.js";
 import pibRoutes from "./routes/pibRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
+import readingRoutes from "./routes/readingRoutes.js";
 
 const app = express();
 
@@ -17,6 +18,8 @@ app.use("/api/ingest", ingestRoutes);
 app.use("/api/pib", pibRoutes);
 
 app.use("/api/jobs", jobRoutes);
+
+app.use("/api/readings", readingRoutes);
 
 const PORT = 3000;
 

@@ -8,6 +8,101 @@ export type Readings = {
     source: string;
 };
 
+export type LatestRainDTO = {
+  station_id: string;
+  station_name: string;
+  district: string | null;
+  state: string | null;
+  recorded_at: string;
+  rain_mm: number;
+  source: string;
+};
+
+export type LatestWaterDTO = {
+  station_id: string;
+  station_name: string;
+  district: string | null;
+  state: string | null;
+  recorded_at: string;
+  river_level_m: number;
+  source: string;
+};
+
+
+
+export async function latestRainReading(state?: string, limit = 1000): Promise<LatestRainDTO[]> {
+  const values: any[] = [];
+  let where = `r.rain_mm IS NOT NULL`;
+
+  if (state) {
+    values.push(state);
+    where += ` AND s.state = $${values.length}`;
+  }
+
+  values.push(limit);
+
+  const q = `
+    SELECT DISTINCT ON (r.station_id)
+      r.station_id,
+      s.name AS station_name,
+      s.district,
+      s.state,
+      r.recorded_at,
+      r.rain_mm,
+      r.source
+    FROM readings r
+    JOIN stations s ON s.station_id = r.station_id
+    WHERE ${where}
+    ORDER BY r.station_id, r.recorded_at DESC
+    LIMIT $${values.length};
+  `;
+
+  const out = await pool.query<LatestRainDTO>(q, values);
+  return out.rows;
+}
+
+
+
+export async function latestWaterLevelReading(state?: string, limit = 1000): Promise <LatestWaterDTO[]> {
+
+    const values: any[] = [];
+
+    let where = "r.river_level_m IS NOT NULL";
+
+    if (state) {
+        values.push(state);
+        where += `AND s.state = $${values.length}`;
+    }
+
+    values.push(limit);
+
+      const q = `
+        SELECT DISTINCT ON (r.station_id)
+        r.station_id,
+        s.name AS station_name,
+        s.district,
+        s.state,
+        r.recorded_at,
+        r.river_level_m,
+        r.source
+        FROM readings r
+        JOIN stations s ON s.station_id = r.station_id
+        WHERE ${where}
+        ORDER BY r.station_id, r.recorded_at DESC
+        LIMIT $${values.length};
+    `;
+
+    const out = await pool.query<LatestWaterDTO>(q, values);
+    return out.rows;
+
+}
+
+
+
+
+
+
+
 
 
 export async function insertReadings(items:Readings[]): Promise<number> {

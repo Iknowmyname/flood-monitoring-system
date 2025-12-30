@@ -35,8 +35,19 @@ export async function ingestPIBState(stateCode: string) {
     });
   }
 
+  // 3) Deduplicate station_ids to avoid ON CONFLICT hitting the same key twice in one statement
+  const stationMap = new Map<string, StationUpsert>();
+  for (const s of stations) {
+    if (!stationMap.has(s.stationId)) {
+      stationMap.set(s.stationId, s);
+    }
+  }
+  const dedupedStations = Array.from(stationMap.values());
 
-  // 4) Prepare readings insert payload (your wide-table design)
+  // 4) Upsert stations so metadata stays current
+  const upsertedStations = await upsertStation(dedupedStations);
+
+  // 5) Prepare readings insert payload (your wide-table design)
   const items: Readings[] = [];
 
   // Rain: only store 1-hour (Now) as your main “latest” signal
@@ -77,7 +88,7 @@ export async function ingestPIBState(stateCode: string) {
   return {
     state: stateCode,
     scraped: { rainRows: rainRows.length, waterLevelRows: wlRows.length },
-    upsertedStations: stations.length,
+    upsertedStations,
     preparedReadings: items.length,
     insertedReadings: inserted,
   };
