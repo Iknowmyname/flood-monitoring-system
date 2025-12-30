@@ -5,8 +5,8 @@ export async function getLatestRain (req: Request, res: Response) {
 
 
     try {
-        const state = (req.body.state ?? "").trim() || undefined;
-        const limit = Number(req.body.limit ?? 1000);
+        const state = String(req.query.state ?? "").trim() || undefined;
+        const limit = Number(req.query.limit ?? 1000);
         const data = await latestRainReading(state, Number.isFinite(limit) ? limit:1000);
         return res.status(200).json({ items:data });
     } catch (err) {

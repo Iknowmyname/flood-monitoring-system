@@ -71,7 +71,7 @@ export async function latestWaterLevelReading(state?: string, limit = 1000): Pro
 
     if (state) {
         values.push(state);
-        where += `AND s.state = $${values.length}`;
+        where += ` AND s.state = $${values.length}`;
     }
 
     values.push(limit);

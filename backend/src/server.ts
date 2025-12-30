@@ -5,6 +5,8 @@ import ingestRoutes from "./routes/ingestRoutes.js";
 import pibRoutes from "./routes/pibRoutes.js";
 import jobRoutes from "./routes/jobRoutes.js";
 import readingRoutes from "./routes/readingRoutes.js";
+import { initSchedulers } from "./queue/scheduler.js";
+import { setupBullBoard } from "./queue/bullBoard.js";
 
 const app = express();
 
@@ -22,6 +24,10 @@ app.use("/api/jobs", jobRoutes);
 app.use("/api/readings", readingRoutes);
 
 const PORT = 3000;
+
+initSchedulers().catch((e) => console.error("Ingestion Scheduler failed ", e));
+
+setupBullBoard(app);
 
 app.listen(PORT,async () => {
     try{
