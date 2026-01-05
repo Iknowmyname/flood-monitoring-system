@@ -1,9 +1,6 @@
 import express from "express";
 import pool from "./db.js";
 import stationRoutes from "./routes/stationsRoutes.js";
-import ingestRoutes from "./routes/ingestRoutes.js";
-import pibRoutes from "./routes/pibRoutes.js";
-import jobRoutes from "./routes/jobRoutes.js";
 import readingRoutes from "./routes/readingRoutes.js";
 import { initSchedulers } from "./queue/scheduler.js";
 import { setupBullBoard } from "./queue/bullBoard.js";
@@ -14,12 +11,6 @@ app.use(express.json());
 
 //Stations DB Connection Test
 app.use("/api/stations", stationRoutes);
-
-app.use("/api/ingest", ingestRoutes);
-
-app.use("/api/pib", pibRoutes);
-
-app.use("/api/jobs", jobRoutes);
 
 app.use("/api/readings", readingRoutes);
 
