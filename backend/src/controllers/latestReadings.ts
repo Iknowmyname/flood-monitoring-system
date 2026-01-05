@@ -1,5 +1,7 @@
+// Controller for exposing latest readings for rainfall and water-level per station
 import type { Request, Response } from "express";
 import { latestRainReading, latestWaterLevelReading } from "../repos/readingsRepository";
+
 
 export async function getLatestRain (req: Request, res: Response) {
 
@@ -14,6 +16,7 @@ export async function getLatestRain (req: Request, res: Response) {
         return res.status(500).json({ error: "Internal Server Error"});
     }
 }
+
 
 export async function getLatestWaterLevel(req: Request, res: Response) {
   try {

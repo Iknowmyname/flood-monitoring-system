@@ -1,3 +1,4 @@
+// Routes for latest rainfall and water-level readings
 import { Router } from "express";
 import { getLatestRain, getLatestWaterLevel } from "../controllers/latestReadings";
 

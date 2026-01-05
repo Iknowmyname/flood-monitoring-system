@@ -1,3 +1,4 @@
+// Routes for station metadata
 import {Router} from "express";
 import {getStations} from "../controllers/stationsController.js"
 

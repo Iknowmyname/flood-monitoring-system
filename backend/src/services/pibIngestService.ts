@@ -1,3 +1,4 @@
+// Logic for scraping data from PublicInfoBanjir by state and upsert stations and readings into Postgres
 import { scrapeRainNowByState, scrapeWaterLevelNowByState } from "../scrapers/publicInfoBanjirScraper.js";
 import { parseMYDatetime } from "../utils/time.js";
 import { insertReadings, type Readings } from "../repos/readingsRepository.js";
@@ -47,10 +48,9 @@ export async function ingestPIBState(stateCode: string) {
   // 4) Upsert stations so metadata stays current
   const upsertedStations = await upsertStation(dedupedStations);
 
-  // 5) Prepare readings insert payload (your wide-table design)
+  // 5) Prepare readings insert payload 
   const items: Readings[] = [];
 
-  // Rain: only store 1-hour (Now) as your main “latest” signal
   for (const r of rainRows) {
     if (r.rain1hNowMm == null) continue;
 
@@ -82,7 +82,7 @@ export async function ingestPIBState(stateCode: string) {
     });
   }
 
-  // 5) Insert readings (your repo already does ON CONFLICT upsert)
+  // 5) Insert ingested water-level and rainfall readings 
   const inserted = await insertReadings(items);
 
   return {
