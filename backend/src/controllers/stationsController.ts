@@ -1,6 +1,6 @@
 // Controller for exposing latest stations list
 import type {Request, Response} from "express";
-import { getActiveStations } from "../services/stationService";
+import { getActiveStations } from "../services/stationService.js";
 
 
 function parseLimitOffsetByInt(value: unknown, revert: number): number {

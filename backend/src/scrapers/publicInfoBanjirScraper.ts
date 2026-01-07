@@ -11,7 +11,7 @@
 // We target the real data table by id: #normaltable1
 
 import { chromium } from "playwright";
-import { parseMYDatetime } from "../utils/time";
+import { parseMYDatetime } from "../utils/time.js";
 
 /**
  * Rainfall "now-ish" row from PublicInfoBanjir rainfall page.

@@ -1,4 +1,4 @@
-import { floodIngestQueue } from "./floodIngestQueue";
+import { floodIngestQueue } from "./floodIngestQueue.js";
 import { redis } from "./redisConnection.js";
 
 const STATES = [

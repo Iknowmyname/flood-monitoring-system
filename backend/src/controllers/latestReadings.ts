@@ -1,6 +1,6 @@
 // Controller for exposing latest readings for rainfall and water-level per station
 import type { Request, Response } from "express";
-import { latestRainReading, latestWaterLevelReading } from "../repos/readingsRepository";
+import { latestRainReading, latestWaterLevelReading } from "../repos/readingsRepository.js";
 
 
 export async function getLatestRain (req: Request, res: Response) {
