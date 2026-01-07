@@ -32,6 +32,8 @@ type WaterReading = {
 
 export default function App() {
 
+  const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
+
   const [stations, setStations] = useState<StationDTO[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [search, setSearch] = useState("");
@@ -45,9 +47,9 @@ export default function App() {
       try {
 
         const urls = [
-          "/api/stations?limit=5000&page=1",
-          "/api/readings/latest/rain",
-          "/api/readings/latest/water_level"
+          `${API_BASE}/api/stations?limit=5000&page=1`,
+          `${API_BASE}/api/readings/latest/rain`,
+          `${API_BASE}/api/readings/latest/water_level`
         ];
 
         const data = await Promise.all(
