@@ -11,5 +11,17 @@ services:
     volumes:
       - flood_pg_data:/var/lib/postgresql/data
 
+  redis:
+    image: redis:7-alpine
+    container_name: flood_redis
+    ports:
+      - "6379:6379"
+    volumes:
+      - flood_redis_data:/data
+    command: ["redis-server", "--appendonly", "yes"]
+
+
+
 volumes:
   flood_pg_data:
+  flood_redis_data:

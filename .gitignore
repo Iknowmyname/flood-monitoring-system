@@ -33,3 +33,6 @@ __pycache__/
 # Logs
 logs/
 *.log
+
+# Local backups
+backend/backup/
