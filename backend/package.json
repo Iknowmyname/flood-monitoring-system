@@ -14,7 +14,6 @@
     "@bull-board/api": "^6.16.2",
     "@bull-board/express": "^6.16.2",
     "bullmq": "^5.66.2",
-    "cors": "^2.8.5",
     "dotenv": "^16.4.5",
     "express": "^4.19.2",
     "ioredis": "^5.8.2",
