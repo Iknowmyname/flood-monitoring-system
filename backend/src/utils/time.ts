@@ -29,7 +29,7 @@ export function parseMYDatetime(raw: string): Date | null {
 
   // Convert to numbers
   const day = Number(dd);
-  const month = Number(mm) - 1; // JS months are 0-based
+  const month = Number(mm) - 1; 
   const year = Number(yyyy);
   const hour = Number(HH);
   const minute = Number(MM);

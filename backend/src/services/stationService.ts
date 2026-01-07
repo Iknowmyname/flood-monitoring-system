@@ -45,7 +45,7 @@ function mapStationDTO(r: StationRow): StationDTO {
     };
 }
 
-//Calls listStations in Repo and calls map to Service Station DTO 
+//Calls listStations in Repo
 export async function getActiveStations(params: StationsParams): Promise <ListStaitonsResult> {
 
     const page = params.page;
