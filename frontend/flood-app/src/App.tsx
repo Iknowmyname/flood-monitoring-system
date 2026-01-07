@@ -190,7 +190,7 @@ export default function App() {
     <div className="h-screen flex flex-col bg-bg0 text-text0 overflow-hidden">
       {/* Header (slimmer) */}
       <header className="h-12 flex items-center justify-between px-4 bg-bg1/80 border-s border-teal/40 text-white shrink-0">
-        <div className="text-lg tracking-wide">Malaysia Water Conditions</div>
+        <div className="text-lg tracking-wide">Malaysia RainFall and River Level Monitoring System</div>
       </header>
 
       {/* Body takes remaining height */}
