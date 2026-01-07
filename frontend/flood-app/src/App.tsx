@@ -333,12 +333,3 @@ function Stat({ pill, value, className }: { pill: string; value: number; classNa
     </div>
   );
 }
-
-function Metric({ title, value }: { title: string; value: string }) {
-  return (
-    <div className="rounded-xl bg-bg1/50 border border-teal/40 shadow-glow p-4">
-      <div className="text-text1 text-sm">{title}</div>
-      <div className="text-4xl mt-2 tracking-wide">{value}</div>
-    </div>
-  );
-}
