@@ -1,4 +1,5 @@
 import express from "express";
+import cors from "cors";
 import pool from "./db.js";
 import stationRoutes from "./routes/stationsRoutes.js";
 import readingRoutes from "./routes/readingRoutes.js";
@@ -6,6 +7,17 @@ import { initSchedulers } from "./queue/scheduler.js";
 import { setupBullBoard } from "./queue/bullBoard.js";
 
 const app = express();
+
+app.use(
+  cors({
+    origin: [
+      "https://flood-monitoring-system-live.vercel.app",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
+    methods: ["GET", "POST", "OPTIONS"],
+  })
+);
 
 app.use(express.json());
 
