@@ -14,7 +14,7 @@ app.use("/api/stations", stationRoutes);
 
 app.use("/api/readings", readingRoutes);
 
-const PORT = 3000;
+const PORT = process.env.PORT || 3000;
 
 initSchedulers().catch((e) => console.error("Ingestion Scheduler failed ", e));
 
