@@ -9,14 +9,14 @@ import cors from "cors";
 
 const app = express();
 
+// CORS first so routes inherit it
+app.use(cors());
 app.use(express.json());
 
 //Stations DB Connection Test
 app.use("/api/stations", stationRoutes);
 
 app.use("/api/readings", readingRoutes);
-
-app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
