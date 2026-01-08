@@ -10,15 +10,14 @@ import cors from "cors";
 const app = express();
 
 // CORS first so routes inherit it
-const allowedOriginsEnv = process.env.ALLOWED_ORIGINS ?? "";
-const allowedOrigins = allowedOriginsEnv
-  .split(",")
-  .map((s) => s.trim())
-  .filter(Boolean);
-
 app.use(
   cors({
-    origin: allowedOrigins.length ? allowedOrigins : ["http://localhost:5173", "http://127.0.0.1:5173"],
+    origin: [
+      "https://flood-monitoring-system-live.vercel.app",
+      "https://flood-monitoring-system-drab.vercel.app",
+      "http://localhost:5173",
+      "http://127.0.0.1:5173",
+    ],
     methods: ["GET", "POST", "OPTIONS"],
   })
 );
