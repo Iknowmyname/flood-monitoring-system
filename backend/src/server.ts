@@ -16,17 +16,7 @@ app.use("/api/stations", stationRoutes);
 
 app.use("/api/readings", readingRoutes);
 
-app.use(
-  cors({
-    origin: [
-      "https://flood-monitoring-system-live.vercel.app",
-      "https://flood-monitoring-system-drab.vercel.app",
-      "http://localhost:5173",
-      "http://127.0.0.1:5173",
-    ],
-    methods: ["GET", "POST", "OPTIONS"],
-  })
-);
+app.use(cors());
 
 const PORT = process.env.PORT || 3000;
 
