@@ -28,3 +28,10 @@ body {
 .maplibregl-popup.minimal-popup .maplibregl-popup-tip {
   display: none;
 }
+
+/* Soft glow pulse for the GitHub button */
+@keyframes pulseGlow {
+  0% { box-shadow: 0 0 0px rgba(255,255,255,0.15); }
+  50% { box-shadow: 0 0 12px rgba(255,255,255,0.35); }
+  100% { box-shadow: 0 0 0px rgba(255,255,255,0.15); }
+}

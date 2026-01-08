@@ -33,6 +33,9 @@ type WaterReading = {
 export default function App() {
 
   const API_BASE = (import.meta.env.VITE_API_BASE_URL as string | undefined)?.replace(/\/$/, "") || "";
+  const GITHUB_URL =
+    (import.meta.env.VITE_GITHUB_URL as string | undefined)?.trim() ||
+    "https://github.com/Iknowmyname/flood-monitoring-system";
 
   const [stations, setStations] = useState<StationDTO[]>([]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -193,6 +196,24 @@ export default function App() {
       {/* Header (slimmer) */}
       <header className="h-12 flex items-center justify-between px-4 bg-bg1/80 border-s border-teal/40 text-white shrink-0">
         <div className="text-lg tracking-wide">Malaysia RainFall and River Level Monitoring System</div>
+        <a
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="flex items-center gap-2 px-4 py-2 rounded-lg border border-white/50 bg-white/5 hover:bg-white/10 hover:shadow-glow transition text-base animate-[pulseGlow_2.4s_ease-in-out_infinite]"
+        >
+          <svg
+            aria-hidden="true"
+            viewBox="0 0 16 16"
+            width="20"
+            height="20"
+            fill="currentColor"
+            className="text-white"
+          >
+            <path d="M8 0C3.58 0 0 3.64 0 8.13c0 3.59 2.29 6.64 5.47 7.72.4.08.55-.18.55-.39 0-.19-.01-.82-.01-1.49-2.01.45-2.53-.5-2.69-.96-.09-.24-.48-.96-.82-1.15-.28-.15-.68-.52-.01-.53.63-.01 1.08.59 1.23.83.72 1.21 1.87.87 2.33.66.07-.53.28-.87.51-1.07-1.78-.21-3.64-.92-3.64-4.07 0-.9.31-1.63.82-2.2-.08-.21-.36-1.05.08-2.18 0 0 .67-.22 2.2.84.64-.18 1.32-.27 2-.27.68 0 1.36.09 2 .27 1.53-1.06 2.2-.84 2.2-.84.44 1.13.16 1.97.08 2.18.51.57.82 1.3.82 2.2 0 3.16-1.87 3.85-3.65 4.06.29.26.54.77.54 1.55 0 1.12-.01 2.02-.01 2.29 0 .21.15.47.55.39A8.13 8.13 0 0 0 16 8.13C16 3.64 12.42 0 8 0Z"></path>
+          </svg>
+          <span className="text-sm font-semibold">Source Code</span>
+        </a>
       </header>
 
       {/* Body takes remaining height */}
