@@ -10,7 +10,8 @@
     "start": "node dist/server.js",
     "worker:prod": "node dist/worker.js",
     "scheduler:prod": "node dist/queue/scheduler.js",
-    "backfill:coords": "tsx src/scripts/backfillStationCoords.ts"
+    "backfill:coords": "tsx src/scripts/backfillStationCoords.ts",
+    "postinstall": "npx playwright install --with-deps chromium"
   },
   "dependencies": {
     "@bull-board/api": "^6.16.2",
