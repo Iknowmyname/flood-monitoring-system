@@ -1,82 +1,48 @@
 // backend/src/scrapers/publicInfobanjirScraper.ts
-//
 // This file scrapes PublicInfoBanjir pages using Playwright.
-// IMPORTANT: There are TWO runtimes involved:
-// 1) Node.js/TypeScript runtime (this file)
-// 2) Browser runtime inside page.evaluate(...) (plain JavaScript executed in Chromium)
-//
-// We ONLY return JSON-serializable data from page.evaluate (strings, numbers, arrays, objects),
-// because DOM nodes can't be passed back to Node.
-//
-// We target the real data table by id: #normaltable1
 
 import { chromium } from "playwright";
 import { parseMYDatetime } from "../utils/time.js";
 
-/**
- * Rainfall "now-ish" row from PublicInfoBanjir rainfall page.
- * We care about:
- * - stationId (stable)
- * - stationName
- * - district
- * - lastUpdatedRaw (timestamp string from the site)
- * - rainFromMidnightMm (aggregate)
- * - rain1hNowMm (best "current" signal)
- */
+
 export type RainNowRow = {
   stationId: string;
   stationName: string;
   district: string | null;
-  lastUpdatedRaw: Date | null;          // "25/12/2025 12:15:00"
+  lastUpdatedRaw: Date | null;         
   rainfallMidnight: number | null;
-  rain1hNowMm: number | null;      // td[12]
+  rain1hNowMm: number | null;     
   dailyTotals: Array<{ dateRaw: string; totalMm: number | null }>; // from header dates + td[5..10]
   source: "publicinfobanjir";
 };
 
-/**
- * Water level "now-ish" row from PublicInfoBanjir water level page.
- * We care about:
- * - stationId (stable)
- * - stationName
- * - district
- * - basins (useful context)
- * - lastUpdatedRaw
- * - waterLevelM (the main measurement)
- */
+
 export type WaterLevelNowRow = {
   stationId: string;
   stationName: string;
   district: string | null;
   mainBasin: string | null;
   subRiverBasin: string | null;
-  lastUpdatedRaw: Date | null;          // e.g. "25/12/2025 12:15:00"
+  lastUpdatedRaw: Date | null;         
   waterLevelM: number | null;
   source: "publicinfobanjir";
 };
 
-/** Build rainfall URL (human-facing page) */
+/* Rainfall URL with State Filter*/
 function rainfallUrl(stateCode: string) {
   return `https://publicinfobanjir.water.gov.my/hujan/data-hujan/?state=${encodeURIComponent(
     stateCode
   )}&lang=en`;
 }
 
-/** Build water level URL (human-facing page) */
+/* Water-Level URL with State Filter*/
 function waterLevelUrl(stateCode: string) {
   return `https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=${encodeURIComponent(
     stateCode
   )}&lang=en`;
 }
 
-/**
- * Parse numeric value from cell text.
- * Examples:
- * - "2.0" => 2
- * - "2.0 mm" => 2
- * - "" or "No Data" => null
- * - "-9999.0" => null (often "invalid sensor" sentinel)
- */
+/* Parse numeric value from cell text.*/
 function parseNumberMaybe(s: string): number | null {
   const txt = (s ?? "").trim();
   if (!txt) return null;
@@ -91,13 +57,11 @@ function parseNumberMaybe(s: string): number | null {
   return n;
 }
 
-/**
- * Extract all rows of the #normaltable1 table as string[][].
- * Each row becomes an array of td text.
- * We do NOT assume header structure because the header uses rowspan/colspan.
- */
+
+/*Extract all rows of the #normaltable1 table as string[][].*/
+
 async function extractNormalTableRows(page: any): Promise<string[][]> {
-  // Wait until the data table exists and has body cells.
+
   await page.waitForSelector("#normaltable1 tbody tr td", { timeout: 30_000 });
 
   const rows = await page.evaluate(`
@@ -163,6 +127,30 @@ async function extractRainTable(page: any): Promise<{
   return result;
 }
 
+const SCRAPE_TIMEOUT = Number(process.env.SCRAPE_TIMEOUT_MS);
+const SCRAPE_RETRIES = Number(process.env.SCRAPE_RETRIES);
+
+
+async function retryScraper<T> (fn: () => Promise<T>, retries: number, stateCode: string ) {
+
+  let lastError;
+
+  for(let attempt = 1; attempt <= retries + 1; attempt ++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.warn(`[scrape] ${stateCode} attempt ${attempt} failed`, err);
+      if (attempt > retries) {
+        break;
+      }
+
+    }
+  }
+  throw lastError;
+
+}
+
 
 /**
  * Rainfall table column mapping (tbody):
@@ -176,11 +164,13 @@ async function extractRainTable(page: any): Promise<{
  * 12 Total 1 Hour (Now)  <-- main "current" value
  */
 export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRow[]> {
-  const browser = await chromium.launch({ headless: true });
+
+  return retryScraper (async () => {
+    const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
 
   try {
-    await page.goto(rainfallUrl(stateCode), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(rainfallUrl(stateCode), { waitUntil: "domcontentloaded", timeout: SCRAPE_TIMEOUT });
 
     const { dailyDates, rows } = await extractRainTable(page);
 
@@ -225,6 +215,8 @@ export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRo
     await page.close().catch(() => {});
     await browser.close().catch(() => {});
   }
+
+  }, SCRAPE_RETRIES, `rain ${stateCode}` );
 }
 /**
  * Scrape water level values for a single state (e.g. "KEL").
@@ -243,12 +235,15 @@ export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRo
  * 11 Danger threshold
  */
 export async function scrapeWaterLevelNowByState(stateCode: string): Promise<WaterLevelNowRow[]> {
-  const browser = await chromium.launch({ headless: true });
+
+  return retryScraper (async () => {
+
+    const browser = await chromium.launch({ headless: true });
   const page = await browser.newPage();
   const url = waterLevelUrl(stateCode);
 
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: SCRAPE_TIMEOUT });
 
     const rawRows = await extractNormalTableRows(page);
 
@@ -285,4 +280,6 @@ export async function scrapeWaterLevelNowByState(stateCode: string): Promise<Wat
     await page.close().catch(() => {});
     await browser.close().catch(() => {});
   }
+  }, SCRAPE_RETRIES, `water ${stateCode}`) ;
+  
 }
