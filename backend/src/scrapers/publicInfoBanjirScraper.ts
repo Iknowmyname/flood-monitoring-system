@@ -127,8 +127,12 @@ async function extractRainTable(page: any): Promise<{
   return result;
 }
 
-const SCRAPE_TIMEOUT = Number(process.env.SCRAPE_TIMEOUT_MS);
-const SCRAPE_RETRIES = Number(process.env.SCRAPE_RETRIES);
+const SCRAPE_TIMEOUT = Number.isFinite(Number(process.env.SCRAPE_TIMEOUT_MS))
+  ? Number(process.env.SCRAPE_TIMEOUT_MS)
+  : 60_000;
+const SCRAPE_RETRIES = Number.isFinite(Number(process.env.SCRAPE_RETRIES))
+  ? Number(process.env.SCRAPE_RETRIES)
+  : 1;
 
 
 async function retryScraper<T> (fn: () => Promise<T>, retries: number, stateCode: string ) {
@@ -218,6 +222,8 @@ export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRo
 
   }, SCRAPE_RETRIES, `rain ${stateCode}` );
 }
+
+
 /**
  * Scrape water level values for a single state (e.g. "KEL").
  * Water level table mapping from your header:
@@ -282,4 +288,115 @@ export async function scrapeWaterLevelNowByState(stateCode: string): Promise<Wat
   }
   }, SCRAPE_RETRIES, `water ${stateCode}`) ;
   
+}
+
+// Fallback JSON feed parsing (latestreadingstrendabc.json)
+const SOURCE_URL =
+  "https://publicinfobanjir.water.gov.my/wp-content/themes/enlighten/data/latestreadingstrendabc.json";
+
+type FeedRow = {
+  a?: string; // station id (unreliable)
+  b?: string; // name
+  c?: string | number; // lat
+  d?: string | number; // lon
+  e?: string; // district
+  f?: string; // state
+  m?: string | number; // current water level
+  q?: string; // water level updated at
+  t?: string | number; // RF 1-hour
+  y?: string; // RF updated at
+  i?: string; // station types (RF / WL / RF,WL)
+};
+
+const stateMap: Record<string, string> = {
+  "KEDAH": "KDH",
+  "KELANTAN": "KEL",
+  "TERENGGANU": "TRG",
+  "PAHANG": "PHG",
+  "SELANGOR": "SEL",
+  "PERAK": "PRK",
+  "PERLIS": "PLS",
+  "PULAU PINANG": "PNG",
+  "PENANG": "PNG",
+  "WILAYAH PERSEKUTUAN": "WLP",
+  "KUALA LUMPUR": "WLP",
+  "PUTRAJAYA": "WLH",
+  "LABUAN": "WLP",
+  "NEGERI SEMBILAN": "NSN",
+  "MELAKA": "MLK",
+  "MALACCA": "MLK",
+  "JOHOR": "JHR",
+  "SABAH": "SAB",
+  "SARAWAK": "SRK",
+};
+
+const canonicalState = (s?: string | null) => {
+  const up = (s ?? "").trim().toUpperCase();
+  return stateMap[up] ?? up;
+};
+
+const toTitleCase = (s?: string | null) =>
+  (s ?? "")
+    .toLowerCase()
+    .replace(/\b([a-z])(\S*)/g, (_m, c, rest) => c.toUpperCase() + rest)
+    .replace(/\(([^)]*)\)/g, (_m, inner) => `(${inner.toUpperCase()})`)
+    .trim();
+
+const norm = (s?: string | null) =>
+  (s ?? "").toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ").trim();
+
+export type RainFallbackRow = {
+  stationName: string;
+  district: string | null;
+  state: string;
+  rainMm: number | null;
+  recordedAt: Date | null;
+};
+
+export type WaterFallbackRow = {
+  stationName: string;
+  district: string | null;
+  state: string;
+  waterLevelM: number | null;
+  recordedAt: Date | null;
+};
+
+export async function fetchJsonFallback(stateCode: string): Promise<{
+  rain: RainFallbackRow[];
+  water: WaterFallbackRow[];
+}> {
+  const res = await fetch(SOURCE_URL);
+  if (!res.ok) {
+    throw new Error(`Fallback fetch failed: ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as FeedRow[];
+
+  const targetState = canonicalState(stateCode);
+  const rain: RainFallbackRow[] = [];
+  const water: WaterFallbackRow[] = [];
+
+  for (const row of data) {
+    const state = canonicalState(row.f);
+    if (targetState && state !== targetState) continue;
+
+    const name = toTitleCase(row.b);
+    const district = toTitleCase(row.e) || null;
+
+    const types = (row.i ?? "").toUpperCase();
+    const rainVal = row.t != null ? parseNumberMaybe(String(row.t)) : null;
+    const waterVal = row.m != null ? parseNumberMaybe(String(row.m)) : null;
+
+    // Rainfall
+    if (types.includes("RF") && rainVal != null) {
+      const dt = parseMYDatetime(row.y ?? "");
+      rain.push({ stationName: name, district, state, rainMm: rainVal, recordedAt: dt });
+    }
+    // Water level
+    if (types.includes("WL") && waterVal != null) {
+      const dt = parseMYDatetime(row.q ?? "");
+      water.push({ stationName: name, district, state, waterLevelM: waterVal, recordedAt: dt });
+    }
+  }
+
+  return { rain, water };
 }
