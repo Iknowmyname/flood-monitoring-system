@@ -1,13 +1,5 @@
 // Logic for scraping data from PublicInfoBanjir by state and upsert stations and readings into Postgres
-import {
-  scrapeRainNowByState,
-  scrapeWaterLevelNowByState,
-  fetchJsonFallback,
-  type RainNowRow,
-  type WaterLevelNowRow,
-  type RainFallbackRow,
-  type WaterFallbackRow,
-} from "../scrapers/publicInfoBanjirScraper.js";
+import {scrapeRainNowByState,scrapeWaterLevelNowByState,fetchJsonFallback,type RainNowRow,type WaterLevelNowRow,type RainFallbackRow,type WaterFallbackRow,} from "../scrapers/publicInfoBanjirScraper.js";
 import { parseMYDatetime } from "../utils/time.js";
 import { insertReadings, type Readings } from "../repos/readingsRepository.js";
 import { upsertStation, type StationUpsert } from "../repos/stationUpsertRepo.js";

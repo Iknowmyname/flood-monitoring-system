@@ -170,7 +170,14 @@ async function retryScraper<T> (fn: () => Promise<T>, retries: number, stateCode
 export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRow[]> {
 
   return retryScraper (async () => {
-    const browser = await chromium.launch({ headless: true });
+
+    let browser;
+    try {
+      browser = await chromium.launch({ headless: true ,args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+  timeout: SCRAPE_TIMEOUT, });} catch (err) {
+        console.error("chromium launch failed", err);
+        throw err;
+      }
   const page = await browser.newPage();
 
   try {
@@ -224,27 +231,18 @@ export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRo
 }
 
 
-/**
- * Scrape water level values for a single state (e.g. "KEL").
- * Water level table mapping from your header:
- * 0 No.
- * 1 Station ID
- * 2 Station Name
- * 3 District
- * 4 Main Basin
- * 5 Sub River Basin
- * 6 Last Updated
- * 7 Water Level (m) (Graph)
- * 8 Normal threshold
- * 9 Alert threshold
- * 10 Warning threshold
- * 11 Danger threshold
- */
+/*Scrape water level values for a single state (e.g. "KEL").*/
 export async function scrapeWaterLevelNowByState(stateCode: string): Promise<WaterLevelNowRow[]> {
 
   return retryScraper (async () => {
 
-    const browser = await chromium.launch({ headless: true });
+  let browser;
+    try {
+      browser = await chromium.launch({ headless: true ,args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+  timeout: SCRAPE_TIMEOUT, });} catch (err) {
+        console.error("chromium launch failed", err);
+        throw err;
+      }
   const page = await browser.newPage();
   const url = waterLevelUrl(stateCode);
 
