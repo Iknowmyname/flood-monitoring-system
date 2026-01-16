@@ -62,7 +62,7 @@ function parseNumberMaybe(s: string): number | null {
 
 async function extractNormalTableRows(page: any): Promise<string[][]> {
 
-  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: 30_000 });
+  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: SCRAPE_TIMEOUT });
 
   const rows = await page.evaluate(`
     (() => {
@@ -88,7 +88,7 @@ async function extractRainTable(page: any): Promise<{
   dailyDates: string[];
   rows: string[][];
 }> {
-  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: 30_000 });
+  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: SCRAPE_TIMEOUT});
 
   const result = await page.evaluate(`
     (() => {
