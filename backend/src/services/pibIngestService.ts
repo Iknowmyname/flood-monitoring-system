@@ -99,25 +99,26 @@ export async function ingestPIBState(stateCode: string) {
   } else {
     // Fallback path: match by name/state/district to existing stations; skip if no match
     const existing = await listStationsByState(stateCode);
-    const byNameState = new Map<string, string>();
-    const byNameStateDistrict = new Map<string, string>();
+    const byNameStateType = new Map<string, string>();
+    const byNameStateTypeDistrict = new Map<string, string>();
 
     for (const s of existing) {
       const name = (s.name ?? "").toLowerCase();
       const state = (s.state ?? "").toLowerCase();
       const district = (s.district ?? "").toLowerCase();
-      byNameState.set(`${name}|${state}`, s.station_id);
-      byNameStateDistrict.set(`${name}|${state}|${district}`, s.station_id);
+      const type = (s.station_type ?? "").toLowerCase();
+      byNameStateType.set(`${name}|${state}|${type}`, s.station_id);
+      byNameStateTypeDistrict.set(`${name}|${state}|${type}|${district}`, s.station_id);
     }
 
-    const findId = (name: string, state: string, district: string | null) =>
-      byNameStateDistrict.get(`${name.toLowerCase()}|${state.toLowerCase()}|${(district ?? "").toLowerCase()}`) ??
-      byNameState.get(`${name.toLowerCase()}|${state.toLowerCase()}`);
+    const findId = (name: string, state: string, type: string ,district: string | null) =>
+      byNameStateTypeDistrict.get(`${name.toLowerCase()}|${state.toLowerCase()}|${type.toLowerCase()}|${(district ?? "").toLowerCase()}`) ??
+      byNameStateType.get(`${name.toLowerCase()}|${state.toLowerCase()}|${type.toLowerCase()}`);
 
     for (const r of rainRows as Array<RainFallbackRow>) {
       if (r.rainMm == null) continue;
       if (!r.recordedAt) continue;
-      const stationId = findId(r.stationName, r.state, r.district);
+      const stationId = findId(r.stationName, r.state, "rainfall", r.district);
       if (!stationId) continue;
       items.push({
         stationId,
@@ -131,7 +132,7 @@ export async function ingestPIBState(stateCode: string) {
     for (const w of wlRows as Array<WaterFallbackRow>) {
       if (w.waterLevelM == null) continue;
       if (!w.recordedAt) continue;
-      const stationId = findId(w.stationName, w.state, w.district);
+      const stationId = findId(w.stationName, w.state, "water_level",w.district);
       if (!stationId) continue;
       items.push({
         stationId,

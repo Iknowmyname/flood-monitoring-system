@@ -69,7 +69,7 @@ export async function listStations(params: ParamsListStations): Promise<StationR
 }
 
 // Fetch all active stations for a given state (or all if state is undefined)
-export async function listStationsByState(state?: string): Promise<Array<Pick<StationRow, "station_id" | "name" | "state" | "district">>> {
+export async function listStationsByState(state?: string): Promise<Array<Pick<StationRow, "station_id" | "name" | "state" | "district" | "station_type">>> {
     const values: any[] = [];
     let where = "is_active = TRUE";
 
@@ -79,7 +79,7 @@ export async function listStationsByState(state?: string): Promise<Array<Pick<St
     }
 
     const sqlQuery = `
-        SELECT station_id, name, state, district
+        SELECT station_id, name, state, district, station_type
         FROM stations
         WHERE ${where};
     `;
