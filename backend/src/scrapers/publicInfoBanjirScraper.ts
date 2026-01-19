@@ -1,82 +1,48 @@
 // backend/src/scrapers/publicInfobanjirScraper.ts
-//
 // This file scrapes PublicInfoBanjir pages using Playwright.
-// IMPORTANT: There are TWO runtimes involved:
-// 1) Node.js/TypeScript runtime (this file)
-// 2) Browser runtime inside page.evaluate(...) (plain JavaScript executed in Chromium)
-//
-// We ONLY return JSON-serializable data from page.evaluate (strings, numbers, arrays, objects),
-// because DOM nodes can't be passed back to Node.
-//
-// We target the real data table by id: #normaltable1
 
 import { chromium } from "playwright";
 import { parseMYDatetime } from "../utils/time.js";
 
-/**
- * Rainfall "now-ish" row from PublicInfoBanjir rainfall page.
- * We care about:
- * - stationId (stable)
- * - stationName
- * - district
- * - lastUpdatedRaw (timestamp string from the site)
- * - rainFromMidnightMm (aggregate)
- * - rain1hNowMm (best "current" signal)
- */
+
 export type RainNowRow = {
   stationId: string;
   stationName: string;
   district: string | null;
-  lastUpdatedRaw: Date | null;          // "25/12/2025 12:15:00"
+  lastUpdatedRaw: Date | null;         
   rainfallMidnight: number | null;
-  rain1hNowMm: number | null;      // td[12]
+  rain1hNowMm: number | null;     
   dailyTotals: Array<{ dateRaw: string; totalMm: number | null }>; // from header dates + td[5..10]
   source: "publicinfobanjir";
 };
 
-/**
- * Water level "now-ish" row from PublicInfoBanjir water level page.
- * We care about:
- * - stationId (stable)
- * - stationName
- * - district
- * - basins (useful context)
- * - lastUpdatedRaw
- * - waterLevelM (the main measurement)
- */
+
 export type WaterLevelNowRow = {
   stationId: string;
   stationName: string;
   district: string | null;
   mainBasin: string | null;
   subRiverBasin: string | null;
-  lastUpdatedRaw: Date | null;          // e.g. "25/12/2025 12:15:00"
+  lastUpdatedRaw: Date | null;         
   waterLevelM: number | null;
   source: "publicinfobanjir";
 };
 
-/** Build rainfall URL (human-facing page) */
+/* Rainfall URL with State Filter*/
 function rainfallUrl(stateCode: string) {
   return `https://publicinfobanjir.water.gov.my/hujan/data-hujan/?state=${encodeURIComponent(
     stateCode
   )}&lang=en`;
 }
 
-/** Build water level URL (human-facing page) */
+/* Water-Level URL with State Filter*/
 function waterLevelUrl(stateCode: string) {
   return `https://publicinfobanjir.water.gov.my/aras-air/data-paras-air/?state=${encodeURIComponent(
     stateCode
   )}&lang=en`;
 }
 
-/**
- * Parse numeric value from cell text.
- * Examples:
- * - "2.0" => 2
- * - "2.0 mm" => 2
- * - "" or "No Data" => null
- * - "-9999.0" => null (often "invalid sensor" sentinel)
- */
+/* Parse numeric value from cell text.*/
 function parseNumberMaybe(s: string): number | null {
   const txt = (s ?? "").trim();
   if (!txt) return null;
@@ -91,14 +57,12 @@ function parseNumberMaybe(s: string): number | null {
   return n;
 }
 
-/**
- * Extract all rows of the #normaltable1 table as string[][].
- * Each row becomes an array of td text.
- * We do NOT assume header structure because the header uses rowspan/colspan.
- */
+
+/*Extract all rows of the #normaltable1 table as string[][].*/
+
 async function extractNormalTableRows(page: any): Promise<string[][]> {
-  // Wait until the data table exists and has body cells.
-  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: 30_000 });
+
+  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: SCRAPE_TIMEOUT });
 
   const rows = await page.evaluate(`
     (() => {
@@ -124,7 +88,7 @@ async function extractRainTable(page: any): Promise<{
   dailyDates: string[];
   rows: string[][];
 }> {
-  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: 30_000 });
+  await page.waitForSelector("#normaltable1 tbody tr td", { timeout: SCRAPE_TIMEOUT});
 
   const result = await page.evaluate(`
     (() => {
@@ -163,6 +127,34 @@ async function extractRainTable(page: any): Promise<{
   return result;
 }
 
+const SCRAPE_TIMEOUT = Number.isFinite(Number(process.env.SCRAPE_TIMEOUT_MS))
+  ? Number(process.env.SCRAPE_TIMEOUT_MS)
+  : 60_000;
+const SCRAPE_RETRIES = Number.isFinite(Number(process.env.SCRAPE_RETRIES))
+  ? Number(process.env.SCRAPE_RETRIES)
+  : 1;
+
+
+async function retryScraper<T> (fn: () => Promise<T>, retries: number, stateCode: string ) {
+
+  let lastError;
+
+  for(let attempt = 1; attempt <= retries + 1; attempt ++) {
+    try {
+      return await fn();
+    } catch (err) {
+      lastError = err;
+      console.warn(`[scrape] ${stateCode} attempt ${attempt} failed`, err);
+      if (attempt > retries) {
+        break;
+      }
+
+    }
+  }
+  throw lastError;
+
+}
+
 
 /**
  * Rainfall table column mapping (tbody):
@@ -176,11 +168,20 @@ async function extractRainTable(page: any): Promise<{
  * 12 Total 1 Hour (Now)  <-- main "current" value
  */
 export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRow[]> {
-  const browser = await chromium.launch({ headless: true });
+
+  return retryScraper (async () => {
+
+    let browser;
+    try {
+      browser = await chromium.launch({ headless: true ,args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+  timeout: SCRAPE_TIMEOUT, });} catch (err) {
+        console.error("chromium launch failed", err);
+        throw err;
+      }
   const page = await browser.newPage();
 
   try {
-    await page.goto(rainfallUrl(stateCode), { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(rainfallUrl(stateCode), { waitUntil: "domcontentloaded", timeout: SCRAPE_TIMEOUT });
 
     const { dailyDates, rows } = await extractRainTable(page);
 
@@ -225,30 +226,28 @@ export async function scrapeRainNowByState(stateCode: string): Promise<RainNowRo
     await page.close().catch(() => {});
     await browser.close().catch(() => {});
   }
+
+  }, SCRAPE_RETRIES, `rain ${stateCode}` );
 }
-/**
- * Scrape water level values for a single state (e.g. "KEL").
- * Water level table mapping from your header:
- * 0 No.
- * 1 Station ID
- * 2 Station Name
- * 3 District
- * 4 Main Basin
- * 5 Sub River Basin
- * 6 Last Updated
- * 7 Water Level (m) (Graph)
- * 8 Normal threshold
- * 9 Alert threshold
- * 10 Warning threshold
- * 11 Danger threshold
- */
+
+
+/*Scrape water level values for a single state (e.g. "KEL").*/
 export async function scrapeWaterLevelNowByState(stateCode: string): Promise<WaterLevelNowRow[]> {
-  const browser = await chromium.launch({ headless: true });
+
+  return retryScraper (async () => {
+
+  let browser;
+    try {
+      browser = await chromium.launch({ headless: true ,args: ["--no-sandbox", "--disable-dev-shm-usage", "--disable-gpu"],
+  timeout: SCRAPE_TIMEOUT, });} catch (err) {
+        console.error("chromium launch failed", err);
+        throw err;
+      }
   const page = await browser.newPage();
   const url = waterLevelUrl(stateCode);
 
   try {
-    await page.goto(url, { waitUntil: "domcontentloaded", timeout: 60_000 });
+    await page.goto(url, { waitUntil: "domcontentloaded", timeout: SCRAPE_TIMEOUT });
 
     const rawRows = await extractNormalTableRows(page);
 
@@ -285,4 +284,116 @@ export async function scrapeWaterLevelNowByState(stateCode: string): Promise<Wat
     await page.close().catch(() => {});
     await browser.close().catch(() => {});
   }
+  }, SCRAPE_RETRIES, `water ${stateCode}`) ;
+  
+}
+
+// Fallback JSON feed parsing (latestreadingstrendabc.json)
+const SOURCE_URL =
+  "https://publicinfobanjir.water.gov.my/wp-content/themes/enlighten/data/latestreadingstrendabc.json";
+
+type FeedRow = {
+  a?: string; // station id (unreliable)
+  b?: string; // name
+  c?: string | number; // lat
+  d?: string | number; // lon
+  e?: string; // district
+  f?: string; // state
+  m?: string | number; // current water level
+  q?: string; // water level updated at
+  t?: string | number; // RF 1-hour
+  y?: string; // RF updated at
+  i?: string; // station types (RF / WL / RF,WL)
+};
+
+const stateMap: Record<string, string> = {
+  "KEDAH": "KDH",
+  "KELANTAN": "KEL",
+  "TERENGGANU": "TRG",
+  "PAHANG": "PHG",
+  "SELANGOR": "SEL",
+  "PERAK": "PRK",
+  "PERLIS": "PLS",
+  "PULAU PINANG": "PNG",
+  "PENANG": "PNG",
+  "WILAYAH PERSEKUTUAN KUALA LUMPUR": "WLH",
+  "WILAYAH PERSEKUTUAN PUTRAJAYA": "PTJ",
+  "WILAYAH PERSEKUTUAN LABUAN": "WLP",
+  "NEGERI SEMBILAN": "NSN",
+  "MELAKA": "MLK",
+  "MALACCA": "MLK",
+  "JOHOR": "JHR",
+  "SABAH": "SAB",
+  "SARAWAK": "SRK",
+};
+
+const canonicalState = (s?: string | null) => {
+  const up = (s ?? "").trim().toUpperCase();
+  return stateMap[up] ?? up;
+};
+
+const toTitleCase = (s?: string | null) =>
+  (s ?? "")
+    .toLowerCase()
+    .replace(/\b([a-z])(\S*)/g, (_m, c, rest) => c.toUpperCase() + rest)
+    .replace(/\(([^)]*)\)/g, (_m, inner) => `(${inner.toUpperCase()})`)
+    .trim();
+
+const norm = (s?: string | null) =>
+  (s ?? "").toLowerCase().replace(/_/g, " ").replace(/\s+/g, " ").trim();
+
+export type RainFallbackRow = {
+  stationName: string;
+  district: string | null;
+  state: string;
+  rainMm: number | null;
+  recordedAt: Date | null;
+};
+
+export type WaterFallbackRow = {
+  stationName: string;
+  district: string | null;
+  state: string;
+  waterLevelM: number | null;
+  recordedAt: Date | null;
+};
+
+export async function fetchJsonFallback(stateCode: string): Promise<{
+  rain: RainFallbackRow[];
+  water: WaterFallbackRow[];
+}> {
+  const res = await fetch(SOURCE_URL);
+  if (!res.ok) {
+    throw new Error(`Fallback fetch failed: ${res.status} ${res.statusText}`);
+  }
+  const data = (await res.json()) as FeedRow[];
+
+  const targetState = canonicalState(stateCode);
+  const rain: RainFallbackRow[] = [];
+  const water: WaterFallbackRow[] = [];
+
+  for (const row of data) {
+    const state = canonicalState(row.f);
+    if (targetState && state !== targetState) continue;
+
+    const name = toTitleCase(row.b);
+    const district = toTitleCase(row.e) || null;
+
+    const types = (row.i ?? "").toUpperCase();
+    const rainVal = row.t != null ? parseNumberMaybe(String(row.t)) : null;
+    const waterVal = row.m != null ? parseNumberMaybe(String(row.m)) : null;
+
+    // Rainfall
+    if (types.includes("RF") && rainVal != null) {
+      const dt = parseMYDatetime(row.y ?? "");
+      rain.push({ stationName: name, district, state, rainMm: rainVal, recordedAt: dt });
+    }
+    // Water level
+    if (types.includes("WL") && waterVal != null) {
+      const dt = parseMYDatetime(row.q ?? "");
+      water.push({ stationName: name, district, state, waterLevelM: waterVal, recordedAt: dt });
+    }
+  }
+
+  return { rain, water };
 }
